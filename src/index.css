@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .image-rendering-pixelated {
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+}
+
+@layer base {
+  html {
+    font-family: "Press Start 2P", cursive;
+  }
+}
+
+@layer utilities {
+  .animate-purlse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .shadow-neon {
+    box-shadow: 0 0 10px 10px theme('colors.cyan.400/30'), 
+                0 0 20px 20px theme('colors.cyan.400/20'), 
+                0 0 30px 30px theme('colors.cyan.400/10');
+  }
+  .bg-matrix {
+    background-color: #000;
+    background-image: linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+}
