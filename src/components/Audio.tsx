@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState, memo } from "react";
 import type { EmulatorType } from "../core/emulator";
 
+// Define the props for Audio
 interface AudioProps {
   emulator: EmulatorType | null;
   isKilled: boolean;
 }
 
+/**
+ * Audio Component
+ * Handles emulator audio output using Web Audio API.
+ * Features:
+ * - Audio context management
+ * - Sample processing and playback
+ * - Audio compression and gain control
+ * - Error handling for audio initialization
+ */
 const Audio = memo<AudioProps>(({ emulator, isKilled }) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);

@@ -1,12 +1,24 @@
 import { useRef, useEffect, useState, memo } from "react";
 import type { EmulatorType } from "../core/emulator";
 
+// Define the props for Display
 interface DisplayProps {
   emulator: EmulatorType | null;
   isKilled: boolean;
   scale: number;
 }
 
+/**
+ * Display Component
+ * Renders the emulator's video output using a canvas element.
+ * Handles frame rendering and scaling of the display.
+ *
+ * Features:
+ * - Canvas-based rendering
+ * - Frame buffer management
+ * - Error handling for rendering issues
+ * - Display scaling support
+ */
 const Display = memo<DisplayProps>(({ emulator, isKilled, scale }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationFrameRef = useRef<number | undefined>(undefined);

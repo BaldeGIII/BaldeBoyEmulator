@@ -7,6 +7,17 @@ import Audio from "./components/Audio";
 import type { EmulatorSettings } from "./types/types";
 import MainMenu from "./components/MainMenu";
 
+/**
+ * Main Application Component
+ * Orchestrates all emulator components and manages global state.
+ *
+ * Features:
+ * - Emulator initialization and lifecycle management
+ * - ROM loading and error handling
+ * - Settings management
+ * - Display scaling
+ * - Component coordination
+ */
 const App = memo(() => {
   const [emulator, setEmulator] = useState<EmulatorType | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -98,7 +109,7 @@ const App = memo(() => {
   return (
     <ErrorBoundary fallback={handleError}>
       <div className="h-screen overflow-hidden bg-matrix flex flex-col">
-        <div className="w-full bg-black/95 border-b border-red-500/30">
+        <div className="w-full bg-black/95 border-b border-red-500/30 relative z-50">
           <MainMenu
             onLoadROM={handleFileChange}
             settings={settings}
@@ -114,24 +125,38 @@ const App = memo(() => {
           />
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-b from-black via-black/95 to-black">
-          <div className="relative transform-gpu">
+        <div className="flex-1 relative">
+          <div className="absolute inset-0 bg-gradient-to-b from-black via-black/95 to-black flex items-center justify-center">
             <div
-              className="rounded-lg overflow-hidden border-2 border-red-500/50"
+              className="h-full flex items-center justify-center p-8"
               style={{
-                transform: `scale(${scale})`,
-                transformOrigin: "center center",
-                boxShadow: `
-                  0 0 20px rgba(220, 38, 38, 0.2),
-                  0 0 40px rgba(220, 38, 38, 0.1)
-                `,
+                maxHeight: "calc(100vh - 120px)", // Account for header and controls
               }}
             >
-              <Display
-                emulator={emulator}
-                isKilled={!isRunning}
-                scale={scale}
-              />
+              <div
+                className="relative transform-gpu"
+                style={{
+                  transform: `scale(${scale})`,
+                  transformOrigin: "center",
+                  maxHeight: "100%",
+                }}
+              >
+                <div
+                  className="rounded-lg overflow-hidden border-2 border-red-500/50"
+                  style={{
+                    boxShadow: `
+                      0 0 20px rgba(220, 38, 38, 0.2),
+                      0 0 40px rgba(220, 38, 38, 0.1)
+                    `,
+                  }}
+                >
+                  <Display
+                    emulator={emulator}
+                    isKilled={!isRunning}
+                    scale={scale}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>

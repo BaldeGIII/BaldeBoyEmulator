@@ -1,6 +1,17 @@
 import React, { useState } from "react";
 import type { EmulatorSettings } from "../types/types";
 
+/**
+ * Props interface for the MainMenu component
+ * @property onLoadROM - Handler for ROM file loading
+ * @property settings - Current emulator settings
+ * @property onSettingChange - Handler for settings changes
+ * @property onRequestFullscreen - Handler for fullscreen requests
+ * @property onSetScale - Handler for display scale changes
+ * @property isRunning - Current emulation state
+ * @property onToggleRun - Handler for start/pause toggle
+ * @property onKillEmulation - Handler for stopping emulation
+ */
 interface MainMenuProps {
   onLoadROM: (e: React.ChangeEvent<HTMLInputElement>) => void;
   settings: EmulatorSettings;
@@ -12,6 +23,15 @@ interface MainMenuProps {
   onKillEmulation: () => void;
 }
 
+/**
+ * MainMenu Component
+ * Provides the main interface for emulator control and settings management.
+ * Features:
+ * - ROM loading
+ * - Emulation control (start/pause/kill)
+ * - Settings management (grouped by category)
+ * - Display scale control
+ */
 const MainMenu: React.FC<MainMenuProps> = ({
   onLoadROM,
   settings,
@@ -22,13 +42,16 @@ const MainMenu: React.FC<MainMenuProps> = ({
   onToggleRun,
   onKillEmulation,
 }) => {
+  // State for settings panel visibility
   const [showSettings, setShowSettings] = useState(false);
 
+  // Shared CSS classes for consistent styling
   const buttonClasses =
     "px-4 py-2 bg-black/60 hover:bg-black/80 text-white rounded border-l-2 border-red-500 transition-all duration-300 text-sm font-medium hover:translate-x-1";
   const menuItemClasses =
     "px-4 py-2 text-white/90 hover:text-white hover:bg-black/60 transition-all duration-200 cursor-pointer flex items-center space-x-2";
 
+  // Settings configuration grouped by category
   const settingsConfig = [
     {
       category: "EMULATION",
@@ -141,56 +164,59 @@ const MainMenu: React.FC<MainMenuProps> = ({
 
           {showSettings && (
             <div
-              className="absolute right-0 top-full mt-2 w-96 bg-black/95 border border-red-500/20 rounded-lg overflow-hidden z-50 max-h-[calc(100vh-120px)] overflow-y-auto"
+              className="fixed mt-2 w-96 bg-black/95 border border-red-500/20 rounded-lg z-40 flex flex-col"
               style={{
-                transform: "translateX(0%)",
-                right: "0",
-                maxHeight: "calc(100vh - 120px)",
-                position: "fixed",
                 top: "4rem",
+                right: "1rem",
+                maxHeight: "calc(100vh - 6rem)",
               }}
             >
-              {settingsConfig.map((category) => (
-                <div
-                  key={category.category}
-                  className="p-2 border-b border-red-500/20 last:border-b-0"
-                >
-                  <div className="text-cyan-400 text-xs font-bold px-4 py-2">
-                    {category.category}
+              <div className="overflow-y-auto custom-scrollbar">
+                {settingsConfig.map((category) => (
+                  <div
+                    key={category.category}
+                    className="p-2 border-b border-red-500/20 last:border-b-0"
+                  >
+                    <div className="text-cyan-400 text-xs font-bold px-4 py-2">
+                      {category.category}
+                    </div>
+                    {category.settings.map(({ key, label }) => (
+                      <div key={key} className={menuItemClasses}>
+                        <input
+                          type="checkbox"
+                          checked={settings[key as keyof EmulatorSettings]}
+                          onChange={(e) =>
+                            onSettingChange(
+                              key as keyof EmulatorSettings,
+                              e.target.checked
+                            )
+                          }
+                          className="form-checkbox h-4 w-4 text-cyan-500 rounded border-cyan-500/50 bg-black/50 focus:ring-cyan-500"
+                        />
+                        <span className="text-sm">{label}</span>
+                      </div>
+                    ))}
                   </div>
-                  {category.settings.map(({ key, label }) => (
-                    <div key={key} className={menuItemClasses}>
-                      <input
-                        type="checkbox"
-                        checked={settings[key as keyof EmulatorSettings]}
-                        onChange={(e) =>
-                          onSettingChange(
-                            key as keyof EmulatorSettings,
-                            e.target.checked
-                          )
-                        }
-                        className="form-checkbox h-4 w-4 text-cyan-500 rounded border-cyan-500/50 bg-black/50 focus:ring-cyan-500"
-                      />
-                      <span className="text-sm">{label}</span>
+                ))}
+
+                {/* Scale Settings */}
+                <div className="p-2 border-t border-red-500/20">
+                  <div className="text-cyan-400 text-xs font-bold px-4 py-2">
+                    SCALE
+                  </div>
+                  {[1, 2, 3, 4].map((scale) => (
+                    <div
+                      key={scale}
+                      className={`${menuItemClasses} hover:text-cyan-400`}
+                      onClick={() => {
+                        onSetScale(scale);
+                        setShowSettings(false); // Close menu after selection
+                      }}
+                    >
+                      {scale}x
                     </div>
                   ))}
                 </div>
-              ))}
-
-              {/* Scale Settings */}
-              <div className="p-2 border-t border-red-500/20">
-                <div className="text-cyan-400 text-xs font-bold px-4 py-2">
-                  SCALE
-                </div>
-                {[1, 2, 3, 4].map((scale) => (
-                  <div
-                    key={scale}
-                    className={`${menuItemClasses} hover:text-cyan-400`}
-                    onClick={() => onSetScale(scale)}
-                  >
-                    {scale}x
-                  </div>
-                ))}
               </div>
             </div>
           )}

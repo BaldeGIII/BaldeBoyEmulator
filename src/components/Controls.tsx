@@ -1,11 +1,24 @@
 import React, { useEffect, useState } from "react";
 import type { EmulatorType } from "../core/emulator";
 
+// Define the props for Controls
 interface ControlsProps {
   emulator: EmulatorType | null;
   isRunning: boolean;
 }
 
+/**
+ * Controls Component
+ * Manages keyboard input for GameBoy controls.
+ * Provides a visual reference for control mapping.
+ *
+ * Key Mappings:
+ * - Arrow keys: D-pad
+ * - Z: A button
+ * - X: B button
+ * - Enter: Start
+ * - Shift: Select
+ */
 const Controls: React.FC<ControlsProps> = ({ emulator, isRunning }) => {
   const [showControls, setShowControls] = useState(false);
 

@@ -32,5 +32,24 @@ export default {
       }
     }
   },
-  plugins: []
+  plugins: [
+    function({ addUtilities }) {
+      addUtilities({
+        '.custom-scrollbar': {
+          'scrollbar-width': 'thin',
+          'scrollbar-color': 'rgba(220, 38, 38, 0.3) transparent',
+          '&::-webkit-scrollbar': {
+            width: '6px'
+          },
+          '&::-webkit-scrollbar-track': {
+            background: 'transparent'
+          },
+          '&::-webkit-scrollbar-thumb': {
+            'background-color': 'rgba(220, 38, 38, 0.3)',
+            'border-radius': '3px'
+          }
+        }
+      })
+    }
+  ]
 }
