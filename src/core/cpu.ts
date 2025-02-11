@@ -653,5 +653,19 @@ export class CPU {
     // Implementation here
     return 4;
   }
+
+  public executeSTOP(): void {
+    // Set low-power mode
+    this.powerManagement.stop();
+    
+    // Clear bit 0 of DIV register (FF04)
+    this.memory.write(0xFF04, this.memory.read(0xFF04) & 0xFE);
+    
+    // Skip the next byte as STOP is a 2-byte instruction
+    this.registers.pc++;
+    
+    // CPU will remain stopped until a button is pressed
+    // This is handled by the PowerManagement class
+  }
 }
 

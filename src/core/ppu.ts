@@ -108,46 +108,32 @@ export class PPU {
 
     // Render sprites in priority order
     for (const [x, y, tileIndex, attributes] of this.sprites) {
-      const yFlip = (attributes & 0x40) !== 0
-      const xFlip = (attributes & 0x20) !== 0
-      const palette = (attributes & 0x10) !== 0 ? 0xff49 : 0xff48
+      this.renderSprite(x, y, tileIndex, attributes)
+    }
+  }
 
-      const spriteHeight = (this.memory.read(0xFF40) & 0x04) !== 0 ? 16 : 8
+  private renderSprite(x: number, y: number, tileIndex: number, attributes: number): void {
+    const priority = (attributes & 0x80) !== 0;
+    const yFlip = (attributes & 0x40) !== 0;
+    const xFlip = (attributes & 0x20) !== 0;
+    const palette = (attributes & 0x10) !== 0 ? 0xFF49 : 0xFF48;
 
-      if (y <= ly && y + spriteHeight > ly) {
-        const tileRow = yFlip ? spriteHeight - 1 - (ly - y) : ly - y
-        const tileAddress = 0x8000 + tileIndex * 16 + tileRow * 2
+    for (let px = 0; px < 8; px++) {
+      if (x + px >= 0 && x + px < 160) {
+        const colorBit = xFlip ? px : 7 - px;
+        const colorNum = this.getSpritePixel(tileIndex, colorBit, y);
 
-        const tileDataLow = this.vram[tileAddress - 0x8000]
-        const tileDataHigh = this.vram[tileAddress + 1 - 0x8000]
-
-        for (let px = 0; px < 8; px++) {
-          if (x + px >= 0 && x + px < 160) {
-            const colorBit = xFlip ? px : 7 - px
-            const colorNum = (((tileDataHigh >> colorBit) & 1) << 1) | ((tileDataLow >> colorBit) & 1)
-
-            if (colorNum !== 0) {
-              const color = this.getColor(colorNum, palette)
-              const fbIndex = (ly * 160 + x + px) * 4
-              this.frameBuffer[fbIndex] = color[0]
-              this.frameBuffer[fbIndex + 1] = color[1]
-              this.frameBuffer[fbIndex + 2] = color[2]
-              this.frameBuffer[fbIndex + 3] = colorNum
-            }
+        if (colorNum !== 0) { // If pixel is not transparent
+          const bgPixel = this.getBackgroundPixel(x + px, y);
+          if (!priority || bgPixel === 0) {
+            const color = this.getColor(colorNum, palette);
+            const fbIndex = (y * 160 + x + px) * 4;
+            this.frameBuffer[fbIndex] = color[0];
+            this.frameBuffer[fbIndex + 1] = color[1];
+            this.frameBuffer[fbIndex + 2] = color[2];
+            this.frameBuffer[fbIndex + 3] = 255;
           }
         }
-      }
-
-      const priority = (attributes & 0x80) !== 0
-      if (priority) {
-        // Only render if background is color 0
-        const bgPixel = this.frameBuffer[(ly * 160 + x) * 4 + 3]
-        if (bgPixel === 0) {
-          // ... render sprite pixel ...
-        }
-      } else {
-        // Render sprite regardless of background
-        // ... render sprite pixel ...
       }
     }
   }

@@ -91,7 +91,7 @@ export class Emulator implements EmulatorType {
   }
   
   public cleanup(): void {
-    // Clear all memory
+    // Clear all memory and references
     this.memory = new Memory();
     this.cpu.reset();
     this.ppu = new PPU(this.memory);
@@ -100,12 +100,28 @@ export class Emulator implements EmulatorType {
     this.joypad = new Joypad(this.memory);
     
     // Force garbage collection of large arrays
-    this.memory = undefined;
-    this.cpu = undefined;
-    this.ppu = undefined;
-    this.apu = undefined;
-    this.screenScaler = undefined;
-    this.joypad = undefined;
+    if (this.memory && this.memory.rom) {
+      this.memory.rom = null;
+    }
+    if (this.ppu && this.ppu.frameBuffer) {
+      this.ppu.frameBuffer = null;
+    }
+    if (this.apu && this.apu.audioBuffer) {
+      this.apu.audioBuffer = null;
+    }
+    
+    // Clear main component references
+    this.memory = null;
+    this.cpu = null;
+    this.ppu = null;
+    this.apu = null;
+    this.screenScaler = null;
+    this.joypad = null;
+    
+    // Suggest garbage collection
+    if (global.gc) {
+      global.gc();
+    }
   }
 }
 

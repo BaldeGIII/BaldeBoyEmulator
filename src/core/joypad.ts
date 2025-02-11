@@ -69,12 +69,14 @@ export class Joypad {
 
   public setVolume(level: number): void {
     this.volumeLevel = Math.max(0, Math.min(100, level));
-    // Update audio output accordingly
+    const normalizedVolume = this.volumeLevel / 100;
+    this.hardware.adjustVolume(Math.floor(normalizedVolume * 7));
   }
 
   public setContrast(level: number): void {
     this.contrastLevel = Math.max(0, Math.min(100, level));
-    // Update display accordingly
+    const normalizedContrast = this.contrastLevel / 100;
+    this.hardware.adjustContrast(Math.floor(normalizedContrast * 15));
   }
 
   private updateJoypadRegister(): void {

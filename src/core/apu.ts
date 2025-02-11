@@ -1,4 +1,3 @@
-
 export class APU {
   private channel1: Channel
   private channel2: Channel
@@ -109,7 +108,24 @@ class Channel {
 
   public updateSweep(): void {
     if (this.sweepEnabled && this.sweepPeriod > 0) {
-      // Implement GB-accurate frequency sweep
+      this.sweepTime--;
+      if (this.sweepTime <= 0) {
+        this.sweepTime = this.sweepPeriod;
+        const newFreq = this.frequency + 
+          (this.sweepDirection * (this.frequency >> this.sweepShift));
+        
+        if (newFreq <= 0x7FF && this.sweepShift > 0) {
+          this.frequency = newFreq;
+          // Calculate next sweep for overflow check
+          const nextFreq = newFreq + 
+            (this.sweepDirection * (newFreq >> this.sweepShift));
+          if (nextFreq > 0x7FF) {
+            this.sweepEnabled = false;
+          }
+        } else {
+          this.sweepEnabled = false;
+        }
+      }
     }
   }
 }

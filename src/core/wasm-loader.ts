@@ -1,4 +1,3 @@
-
 export async function loadWasm(): Promise<WebAssembly.WebAssemblyInstantiatedSource> {
   try {
     // Adjust the path according to where your WASM file will be located
@@ -7,7 +6,20 @@ export async function loadWasm(): Promise<WebAssembly.WebAssemblyInstantiatedSou
     const wasmModule = await WebAssembly.instantiate(wasmBuffer, {
       env: {
         memory: new WebAssembly.Memory({ initial: 256 }), // 16MB initial memory
-        // Add any additional environment imports your WASM module needs here
+        abort: (msg: number, file: number, line: number, column: number) => {
+          console.error('WASM abort:', msg, file, line, column);
+        },
+        seed: () => Date.now(),
+        log_debug: (ptr: number, len: number) => {
+          // Log debug messages from WASM
+        },
+        now: () => performance.now(),
+        js_malloc: (size: number) => {
+          // Custom memory allocation
+        },
+        js_free: (ptr: number) => {
+          // Custom memory deallocation
+        }
       }
     });
 

@@ -7,11 +7,12 @@ export class HardwareControl {
   
   public adjustVolume(value: number): void {
     this.volume = Math.max(0, Math.min(7, value));
-    // Update APU master volume
+    this.apu.setMasterVolume(this.volume / 7); // Normalize to 0-1 range
   }
   
   public adjustContrast(value: number): void {
     this.contrast = Math.max(0, Math.min(15, value));
-    // Update PPU contrast settings
+    const contrastFactor = 0.7 + (this.contrast / 15) * 0.6; // Range 0.7-1.3
+    this.ppu.setContrastFactor(contrastFactor);
   }
 }
