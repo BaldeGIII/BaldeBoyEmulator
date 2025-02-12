@@ -1,7 +1,29 @@
 import type { Memory } from "../core/memory"
 
 export class CPU {
-  private static readonly CLOCK_SPEED = 4194304;
+  private static readonly CLOCK_SPEED_NORMAL = 4194304; // 4.194304 MHz
+  private static readonly CLOCK_SPEED_DOUBLE = 8388608; // 8.388608 MHz
+  private static readonly MACHINE_CYCLES_PER_SECOND = 1048576; // Clock speed / 4
+
+  private isDoubleSpeed = false;
+  private currentClockSpeed = CPU.CLOCK_SPEED_NORMAL;
+
+  // Add GBC-specific registers
+  private key1 = 0x00; //Speed switch register
+  private svbk = 0x01; // WRAM bank register
+  private vbk = 0x00; // VRAM  bank register
+
+
+  public switchSpeed(): void {
+    if (this.key1 & 0x01) {
+      this.isDoubleSpeed = !this.isDoubleSpeed;
+      this.currentClockSpeed = this.isDoubleSpeed ? 
+        CPU.CLOCK_SPEED_DOUBLE : 
+        CPU.CLOCK_SPEED_NORMAL;
+      this.key1 &= 0x7E; // Clear bit 0
+    }
+  }
+  
   private a = 0
   private b = 0
   private c = 0

@@ -1,162 +1,107 @@
 import type { Memory } from "../core/memory"
 
 export class PPU {
-  private vram: Uint8Array
-  private oam: Uint8Array
-  private frameBuffer: Uint8ClampedArray
-  private scanlineCounter = 0
-  private sprites: number[][] = []
+  // Updated VRAM for GBC's dual-bank system
+  private vram: Uint8Array[] = [
+    new Uint8Array(0x2000), // Bank 0
+    new Uint8Array(0x2000)  // Bank 1
+  ];
+  private currentVRAMBank = 0;
+  
+  // GBC color palettes
+  private bgPalettes = new Uint8Array(64);  // 8 palettes × 4 colors × 2 bytes
+  private spritePalettes = new Uint8Array(64);  // 8 palettes × 4 colors × 2 bytes
+  private bgPaletteIndex = 0;
+  private spritePaletteIndex = 0;
+  private bgPaletteAutoIncrement = false;
+  private spritePaletteAutoIncrement = false;
 
   constructor(private memory: Memory) {
-    this.vram = new Uint8Array(0x2000)
-    this.oam = new Uint8Array(0xa0)
-    this.frameBuffer = new Uint8ClampedArray(160 * 144 * 4)
+    this.oam = new Uint8Array(0xa0);
+    this.frameBuffer = new Uint8ClampedArray(160 * 144 * 4);
+    this.scanlineCounter = 0;
   }
 
-  public step(cycles: number): void {
-    this.scanlineCounter += cycles
+  private getVRAMBank(): Uint8Array {
+    return this.vram[this.currentVRAMBank];
+  }
 
-    if (this.scanlineCounter >= 456) {
-      this.scanlineCounter -= 456
-      const ly = this.memory.read(0xff44)
-      this.memory.write(0xff44, (ly + 1) % 154)
-
-      if (ly < 144) {
-        this.renderScanline(ly)
-      } else if (ly === 144) {
-        // V-Blank start
-        // Trigger V-Blank interrupt
-        const interruptFlags = this.memory.read(0xff0f)
-        this.memory.write(0xff0f, interruptFlags | 0x01)
-      }
+  private writeBGPalette(value: number): void {
+    this.bgPalettes[this.bgPaletteIndex] = value;
+    if (this.bgPaletteAutoIncrement) {
+      this.bgPaletteIndex = (this.bgPaletteIndex + 1) & 0x3F;
     }
   }
 
-  private renderScanline(ly: number): void {
-    const lcdc = this.memory.read(0xff40)
-    if (lcdc & 0x80) {
-      this.renderBackground(ly)
-      this.renderSprites(ly)
+  private writeSpritePalette(value: number): void {
+    this.spritePalettes[this.spritePaletteIndex] = value;
+    if (this.spritePaletteAutoIncrement) {
+      this.spritePaletteIndex = (this.spritePaletteIndex + 1) & 0x3F;
     }
   }
 
-  private renderBackground(ly: number): void {
-    const lcdc = this.memory.read(0xff40);
-    const scrollY = this.memory.read(0xff42);
-    const scrollX = this.memory.read(0xff43);
-    const windowY = this.memory.read(0xff4a);
-    const windowX = this.memory.read(0xff4b) - 7;
+  private getGBCColor(paletteData: Uint8Array, colorIndex: number): [number, number, number] {
+    const index = colorIndex * 2;
+    const low = paletteData[index];
+    const high = paletteData[index + 1];
+    const color = low | (high << 8);
+    
+    // Convert 5-bit GBC colors to 8-bit RGB
+    const r = ((color & 0x1F) * 255 / 31) | 0;
+    const g = (((color >> 5) & 0x1F) * 255 / 31) | 0;
+    const b = (((color >> 10) & 0x1F) * 255 / 31) | 0;
+    
+    return [r, g, b];
+  }
+
+  private renderBackgroundGBC(ly: number): void {
+    const lcdc = this.memory.read(0xFF40);
+    const scrollY = this.memory.read(0xFF42);
+    const scrollX = this.memory.read(0xFF43);
+    const windowY = this.memory.read(0xFF4A);
+    const windowX = this.memory.read(0xFF4B) - 7;
 
     const usingWindow = (lcdc & 0x20) !== 0 && windowY <= ly;
     const tileData = (lcdc & 0x10) !== 0 ? 0x8000 : 0x8800;
-    let tileMap = (lcdc & 0x08) !== 0 ? 0x9c00 : 0x9800;
+    let tileMap = (lcdc & 0x08) !== 0 ? 0x9C00 : 0x9800;
+    
     if (usingWindow) {
-      tileMap = (lcdc & 0x40) !== 0 ? 0x9c00 : 0x9800;
+      tileMap = (lcdc & 0x40) !== 0 ? 0x9C00 : 0x9800;
     }
 
     const y = usingWindow ? ly - windowY : scrollY + ly;
-    const tileRow = Math.floor(y / 8) * 32;
+    const tileRow = ((y / 8) | 0) * 32;
 
     for (let px = 0; px < 160; px++) {
       const x = usingWindow && px >= windowX ? px - windowX : scrollX + px;
-      const tileCol = Math.floor(x / 8);
-      let tileNum = this.vram[tileMap - 0x8000 + tileRow + tileCol];
+      const tileCol = (x / 8) | 0;
+      
+      // Get tile attributes from VRAM bank 1
+      const tileAttrs = this.vram[1][tileMap - 0x8000 + tileRow + tileCol];
+      const tileBankNum = (tileAttrs & 0x08) >> 3;
+      const paletteNum = tileAttrs & 0x07;
+      const xFlip = (tileAttrs & 0x20) !== 0;
+      const yFlip = (tileAttrs & 0x40) !== 0;
+      const priority = (tileAttrs & 0x80) !== 0;
 
-      if (tileData === 0x8800) {
-        tileNum = (tileNum ^ 0x80) - 128;
-      }
+      let tileNum = this.vram[0][tileMap - 0x8000 + tileRow + tileCol];
+      const tileAddress = tileData + (tileNum * 16);
+      
+      // Get correct tile data based on attributes
+      const tileDataBank = this.vram[tileBankNum];
+      const tileY = yFlip ? 7 - (y % 8) : y % 8;
+      const tileDataLow = tileDataBank[tileAddress + (tileY * 2)];
+      const tileDataHigh = tileDataBank[tileAddress + (tileY * 2) + 1];
 
-      const tileDataAddress = tileData + (tileNum * 16) + ((y % 8) * 2);
-      const tileDataLow = this.vram[tileDataAddress - 0x8000];
-      const tileDataHigh = this.vram[tileDataAddress + 1 - 0x8000];
-
-      const colorBit = 7 - (x % 8);
-      const colorNum = (((tileDataHigh >> colorBit) & 1) << 1) | ((tileDataLow >> colorBit) & 1);
-      const color = this.getColor(colorNum, 0xff47);
+      const tileX = xFlip ? x % 8 : 7 - (x % 8);
+      const colorNum = ((tileDataHigh >> tileX) & 1) << 1 | ((tileDataLow >> tileX) & 1);
+      const color = this.getGBCColor(this.bgPalettes, paletteNum * 8 + colorNum * 2);
 
       const fbIndex = (ly * 160 + px) * 4;
       this.frameBuffer[fbIndex] = color[0];
       this.frameBuffer[fbIndex + 1] = color[1];
       this.frameBuffer[fbIndex + 2] = color[2];
-      this.frameBuffer[fbIndex + 3] = 255; // Alpha channel
+      this.frameBuffer[fbIndex + 3] = 255;
     }
-  }
-
-  private renderSprites(ly: number): void {
-    // Clear sprite buffer
-    this.sprites = []
-    
-    // Collect visible sprites for this scanline
-    for (let i = 0; i < 40; i++) {
-      const index = i * 4
-      const y = this.oam[index] - 16
-      const x = this.oam[index + 1] - 8
-      const tileIndex = this.oam[index + 2]
-      const attributes = this.oam[index + 3]
-
-      const tall = (this.memory.read(0xFF40) & 0x04) !== 0
-      const height = tall ? 16 : 8
-
-      if (y <= ly && y + height > ly) {
-        this.sprites.push([x, y, tileIndex, attributes])
-        if (this.sprites.length === 10) break // Hardware limit of 10 sprites per scanline
-      }
-    }
-
-    // Sort sprites by x-coordinate (lower x = higher priority)
-    this.sprites.sort((a, b) => a[0] - b[0])
-
-    // Render sprites in priority order
-    for (const [x, y, tileIndex, attributes] of this.sprites) {
-      this.renderSprite(x, y, tileIndex, attributes)
-    }
-  }
-
-  private renderSprite(x: number, y: number, tileIndex: number, attributes: number): void {
-    const priority = (attributes & 0x80) !== 0;
-    const yFlip = (attributes & 0x40) !== 0;
-    const xFlip = (attributes & 0x20) !== 0;
-    const palette = (attributes & 0x10) !== 0 ? 0xFF49 : 0xFF48;
-
-    for (let px = 0; px < 8; px++) {
-      if (x + px >= 0 && x + px < 160) {
-        const colorBit = xFlip ? px : 7 - px;
-        const colorNum = this.getSpritePixel(tileIndex, colorBit, y);
-
-        if (colorNum !== 0) { // If pixel is not transparent
-          const bgPixel = this.getBackgroundPixel(x + px, y);
-          if (!priority || bgPixel === 0) {
-            const color = this.getColor(colorNum, palette);
-            const fbIndex = (y * 160 + x + px) * 4;
-            this.frameBuffer[fbIndex] = color[0];
-            this.frameBuffer[fbIndex + 1] = color[1];
-            this.frameBuffer[fbIndex + 2] = color[2];
-            this.frameBuffer[fbIndex + 3] = 255;
-          }
-        }
-      }
-    }
-  }
-
-  private getColor(colorNum: number, paletteAddress: number): [number, number, number] {
-    const palette = this.memory.read(paletteAddress)
-    const intensity = (palette >> (colorNum * 2)) & 3
-    switch (intensity) {
-      case 0:
-        return [255, 255, 255]
-      case 1:
-        return [192, 192, 192]
-      case 2:
-        return [96, 96, 96]
-      case 3:
-        return [0, 0, 0]
-      default:
-        return [255, 255, 255] // default color
-    }
-  }
-
-  public getFrameBuffer(): Uint8ClampedArray {
-    return this.frameBuffer
   }
 }
-
