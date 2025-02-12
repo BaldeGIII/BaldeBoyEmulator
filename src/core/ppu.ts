@@ -104,4 +104,10 @@ export class PPU {
       this.frameBuffer[fbIndex + 3] = 255;
     }
   }
+
+  getFrameBuffer(): Uint8Array {
+    // Implement the method to return the frame buffer
+    // Assuming frameBuffer is a property of PPU that holds the frame data
+    return this.frameBuffer;
+  }
 }

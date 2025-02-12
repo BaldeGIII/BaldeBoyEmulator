@@ -1,5 +1,6 @@
 import React, { memo, useState, useCallback } from "react";
 import { initEmulator, type EmulatorType } from "./core/emulator";
+import { CPU } from "./core/cpu";
 import Display from "./components/Display";
 import Controls from "./components/Controls";
 import ErrorBoundary from "./components/ErrorBoundary";

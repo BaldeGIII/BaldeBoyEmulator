@@ -8,6 +8,13 @@ import { Joypad } from "./joypad";
 export type EmulatorButton = 'up' | 'down' | 'left' | 'right' | 'a' | 'b' | 'start' | 'select';
 
 export interface EmulatorType {
+  getCPUState (): {
+    pc: number;
+    sp: number;
+    registers: {[key: string]: number};
+    flags: { [key: string]: boolean };
+    currentOpcode: number;
+  };
   loadROM: (data: Uint8Array) => void;
   getFrameBuffer: () => Uint8Array;
   getAudioSamples: (numSamples: number) => Float32Array;
@@ -64,6 +71,16 @@ export class Emulator implements EmulatorType {
       this.apu.step(stepCycles);
     }
     this.screenScaler.updateScreen(this.getFrameBuffer());
+  }
+
+  public getCPUState(): {
+    pc: number;
+    sp: number;
+    registers: { [key: string]: number };
+    flags: { [key: string]: boolean };
+    currentOpcode: number;
+  } {
+    return this.cpu.getState();
   }
 
   public setButtonPressed(button: EmulatorButton): void {

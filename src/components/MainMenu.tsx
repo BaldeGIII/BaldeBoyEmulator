@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { EmulatorSettings } from "../types/types";
+import { GBDebugger } from "../core/GBDebugger";
 
 /**
  * Props interface for the MainMenu component
@@ -11,6 +12,7 @@ import type { EmulatorSettings } from "../types/types";
  * @property isRunning - Current emulation state
  * @property onToggleRun - Handler for start/pause toggle
  * @property onKillEmulation - Handler for stopping emulation
+ * @property onDebugErrors - Handler for debug errors
  */
 interface MainMenuProps {
   onLoadROM: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -21,6 +23,7 @@ interface MainMenuProps {
   isRunning: boolean;
   onToggleRun: () => void;
   onKillEmulation: () => void;
+  onDebugErrors: (errors: string[]) => void; // Add this prop
 }
 
 /**
@@ -41,7 +44,26 @@ const MainMenu: React.FC<MainMenuProps> = ({
   isRunning,
   onToggleRun,
   onKillEmulation,
+  onDebugErrors,
 }) => {
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const romData = new Uint8Array(arrayBuffer);
+
+    // Log ROM information and get any errors
+    const { errors } = GBDebugger.getInstance().logROMInfo(romData);
+
+    // Pass errors to parent component
+    onDebugErrors(errors);
+
+    // Call the provided onLoadROM handler
+    onLoadROM(event);
+  };
   // State for settings panel visibility
   const [showSettings, setShowSettings] = useState(false);
 

@@ -1,4 +1,6 @@
 import type { Memory } from "../core/memory"
+import { CPUInstructionChecker } from "./cpu_instructions";
+import { GBDebugger } from "./GBDebugger";
 
 export class CPU {
   private static readonly CLOCK_SPEED_NORMAL = 4194304; // 4.194304 MHz
@@ -82,27 +84,30 @@ export class CPU {
   }
 
   public step(): number {
+    const cpuDebugger = GBDebugger.getInstance();
+    cpuDebugger.logCPUState(this);
+
     if (this.halted) {
       if (this.checkInterrupts()) {
-        this.halted = false
+        this.halted = false;
       }
-      return 4
+      return 4;
     }
 
     if (this.pendingEnableInterrupts) {
-      this.interruptMasterEnable = true
-      this.pendingEnableInterrupts = false
+      this.interruptMasterEnable = true;
+      this.pendingEnableInterrupts = false;
     }
 
     // Handle interrupts
     if (this.interruptMasterEnable && this.checkInterrupts()) {
-      this.interruptMasterEnable = false
-      this.halted = false
-      return this.handleInterrupt()
+      this.interruptMasterEnable = false;
+      this.halted = false;
+      return this.handleInterrupt();
     }
 
-    const opcode = this.memory.read(this.pc++)
-    return this.executeInstruction(opcode)
+    const opcode = this.memory.read(this.pc++);
+    return this.executeInstruction(opcode);
   }
 
   private checkInterrupts(): boolean {
@@ -138,6 +143,12 @@ export class CPU {
   }
 
   private executeInstruction(opcode: number): number {
+    const instruction = CPUInstructionChecker.checkImplementation(opcode);
+    if (instruction) {
+      console.log(`Executing: ${instruction.name} (0x${opcode.toString(16).padStart(2, '0')}) - ${instruction.description}`);
+    } else {
+      console.warn(`Unknown opcode: 0x${opcode.toString(16).padStart(2, '0')}`);
+    }
     switch (opcode) {
       case 0x00:
         return this.nop()
@@ -688,6 +699,22 @@ export class CPU {
     
     // CPU will remain stopped until a button is pressed
     // This is handled by the PowerManagement class
+  }
+
+  getState(): {
+    pc: number;
+    sp: number;
+    registers: { [key: string]: number };
+    flags: { [key: string]: boolean };
+    currentOpcode: number;
+  } {
+    return {
+      pc: this.pc,
+      sp: this.sp,
+      registers: this.registers,
+      flags: this.flags,
+      currentOpcode: this.currentOpcode,
+    };
   }
 }
 
